@@ -28,7 +28,7 @@ HEADERS = {
 
 def fetch_alerts():
     alerts = []
-    for i in range(2, -1, -1):
+    for i in range(4, -1, -1):
         d = datetime.date.today() - datetime.timedelta(days=i)
         ds = d.strftime('%d.%m.%Y')
         url = (

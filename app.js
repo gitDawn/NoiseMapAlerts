@@ -85,8 +85,8 @@ function findBestWindow(minuteCounts, minutes) {
 
 // ── Risk calculation ──────────────────────────────────────────
 function calcRisk(minuteCounts, bestMinute, minutes) {
-  // Max expected: 3 days × 5 alerts/hour × (minutes/60)
-  const maxExpected = 3 * 5 * (minutes / 60);
+  // Max expected: 5 days × 5 alerts/hour × (minutes/60)
+  const maxExpected = 5 * 5 * (minutes / 60);
   let sum = 0;
   for (let w = 0; w < minutes; w++) {
     sum += minuteCounts[(bestMinute + w) % 1440];
@@ -161,7 +161,7 @@ function fmtMinute(m) {
 // ── Stats panel ───────────────────────────────────────────────
 function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
   const total = alerts.length;
-  const avgPerDay = (total / 3).toFixed(1);
+  const avgPerDay = (total / 5).toFixed(1);
   const hourlyCounts = minutesToHourly(minuteCounts);
   const peakHour = hourlyCounts.indexOf(Math.max(...hourlyCounts));
   const lastAlert = alerts.length > 0 ? alerts[alerts.length - 1].alertDate || '—' : '—';
