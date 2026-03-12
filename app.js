@@ -170,7 +170,7 @@ function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
   const dateRange = dates.length >= 2 ? `${dates[0]} – ${dates[dates.length-1]}` : dates[0] || '';
   document.getElementById('chartTitle').textContent =
     `מספר התרעות לפי שעה — ${city}${dateRange ? ` (${dateRange})` : ''}`;
-  const lastAlert = alerts.length > 0 ? alerts[alerts.length - 1].alertDate || '—' : '—';
+  const lastAlert = alerts.length > 0 ? alerts[0].alertDate || '—' : '—';
   const lastAlertShort = typeof lastAlert === 'string'
     ? (lastAlert.includes('T') ? lastAlert.split('T')[1].slice(0,5) : (lastAlert.split(' ')[1] || lastAlert).slice(0,5))
     : '—';
