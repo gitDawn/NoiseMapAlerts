@@ -15,14 +15,10 @@ let chart = null;
 let selectedMinutes = 5;
 
 
-// ── Cloudflare Worker URL ─────────────────────────────────────
-// After deploying worker.js to Cloudflare Workers, paste the URL here:
-const WORKER_URL = 'https://aged-cake-7e98.shahar8.workers.dev';
-
-// ── Fetch alerts from Cloudflare Worker (fresh, no CORS issues) ──
+// ── Fetch alerts.json (updated every 2h by fetch_alerts.py on your PC) ──
 async function fetchAllAlerts() {
-  const resp = await fetch(WORKER_URL);
-  if (!resp.ok) throw new Error(`Worker error: ${resp.status}`);
+  const resp = await fetch('alerts.json?t=' + Date.now());
+  if (!resp.ok) throw new Error('alerts.json not found');
   const data = await resp.json();
   return Array.isArray(data) ? data : [];
 }

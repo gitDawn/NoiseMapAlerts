@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api:*)",
+      "Bash(curl -sv \"https://www.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=11.03.2026&toDate=13.03.2026&mode=0\" -H \"Referer: https://www.oref.org.il/\")",
+      "Bash(curl -s \"https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json\" -H \"Referer: https://www.oref.org.il/\")",
+      "Bash(curl -sv \"https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=11.03.2026&toDate=13.03.2026&mode=0\")",
+      "Bash(gh run:*)",
+      "Bash(curl -s \"https://gitdawn.github.io/NoiseMapAlerts/alerts.json\")",
+      "Bash(python3 -c \"import sys,json,base64; d=json.load\\(sys.stdin\\); content=base64.b64decode\\(d[''''content'''']\\).decode\\(\\); print\\(content[:300]\\)\")",
+      "Bash(curl -s \"https://aged-cake-7e98.shahar8.workers.dev\")",
+      "Bash(pip install:*)",
+      "Bash(python fetch_alerts.py)"
+    ]
+  }
+}
