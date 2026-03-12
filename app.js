@@ -15,10 +15,14 @@ let chart = null;
 let selectedMinutes = 5;
 
 
-// ── Fetch pre-built alerts.json (updated every 2h by GitHub Actions) ──
+// ── Cloudflare Worker URL ─────────────────────────────────────
+// After deploying worker.js to Cloudflare Workers, paste the URL here:
+const WORKER_URL = 'https://noisemap-proxy.REPLACE_ME.workers.dev';
+
+// ── Fetch alerts from Cloudflare Worker (fresh, no CORS issues) ──
 async function fetchAllAlerts() {
-  const resp = await fetch('alerts.json?t=' + Date.now());
-  if (!resp.ok) throw new Error('alerts.json not found');
+  const resp = await fetch(WORKER_URL);
+  if (!resp.ok) throw new Error(`Worker error: ${resp.status}`);
   const data = await resp.json();
   return Array.isArray(data) ? data : [];
 }
