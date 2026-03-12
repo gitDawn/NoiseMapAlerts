@@ -14,44 +14,13 @@ const RISK_LEVELS = [
 let chart = null;
 let selectedMinutes = 5;
 
-// ── Date helpers ──────────────────────────────────────────────
-function formatDateIL(d) {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
-}
 
-function getLast3Days() {
-  const dates = [];
-  for (let i = 2; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    dates.push(d);
-  }
-  return dates;
-}
-
-// ── Fetch from Pikud HaOref via CORS proxy ────────────────────
-async function fetchAlertsForDate(date) {
-  const ds = formatDateIL(date);
-  const apiUrl = `https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${ds}&toDate=${ds}&mode=0`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-  const resp = await fetch(proxyUrl);
-  if (!resp.ok) throw new Error('Network error');
-  const json = await resp.json();
-  if (!json.contents) return [];
-  try {
-    const parsed = JSON.parse(json.contents);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
+// ── Fetch pre-built alerts.json (updated every 2h by GitHub Actions) ──
 async function fetchAllAlerts() {
-  const days = getLast3Days();
-  const results = await Promise.all(days.map(fetchAlertsForDate));
-  return results.flat();
+  const resp = await fetch('alerts.json?t=' + Date.now());
+  if (!resp.ok) throw new Error('alerts.json not found');
+  const data = await resp.json();
+  return Array.isArray(data) ? data : [];
 }
 
 // ── Filter by city ────────────────────────────────────────────

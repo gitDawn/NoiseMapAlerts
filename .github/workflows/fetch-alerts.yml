@@ -1,0 +1,51 @@
+name: Fetch Alert Data
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # every 2 hours
+  workflow_dispatch:          # allow manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch last 3 days of alerts from Pikud HaOref
+        run: |
+          python3 - <<'EOF'
+          import urllib.request, json, datetime, sys
+
+          alerts = []
+          for i in range(2, -1, -1):
+              d = datetime.date.today() - datetime.timedelta(days=i)
+              ds = d.strftime('%d.%m.%Y')
+              url = (
+                'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx'
+                f'?lang=he&fromDate={ds}&toDate={ds}&mode=0'
+              )
+              try:
+                  req = urllib.request.Request(url, headers={'Referer': 'https://www.oref.org.il/'})
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      data = json.loads(r.read().decode('utf-8'))
+                      if isinstance(data, list):
+                          alerts.extend(data)
+                          print(f'{ds}: {len(data)} alerts')
+              except Exception as e:
+                  print(f'Error for {ds}: {e}', file=sys.stderr)
+
+          with open('alerts.json', 'w', encoding='utf-8') as f:
+              json.dump(alerts, f, ensure_ascii=False, separators=(',', ':'))
+
+          print(f'Total: {len(alerts)} alerts saved to alerts.json')
+          EOF
+
+      - name: Commit updated alerts.json
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add alerts.json
+          git diff --staged --quiet && echo "No changes" || (git commit -m "chore: update alerts data [skip ci]" && git push)
