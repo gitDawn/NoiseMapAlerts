@@ -174,7 +174,7 @@ function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
   document.getElementById('statsGrid').innerHTML = `
     <div class="stat-row"><span class="stat-label">ישוב</span><span class="stat-value">${city}</span></div>
     <div class="stat-row"><span class="stat-label">חלון בטוח</span><span class="stat-value">${fmtMinute(bestMinute)} – ${fmtMinute(endMinute)}</span></div>
-    <div class="stat-row"><span class="stat-label">מספר התרעות (3 ימים)</span><span class="stat-value">${total}</span></div>
+    <div class="stat-row"><span class="stat-label">מספר התרעות בנתונים</span><span class="stat-value">${total}</span></div>
     <div class="stat-row"><span class="stat-label">ממוצע ליום</span><span class="stat-value">${avgPerDay}</span></div>
     <div class="stat-row"><span class="stat-label">שעת השיא</span><span class="stat-value">${String(peakHour).padStart(2,'0')}:00</span></div>
     <div class="stat-row"><span class="stat-label">זמן התרעה אחרונה</span><span class="stat-value">${lastAlertShort}</span></div>
@@ -182,6 +182,8 @@ function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
 }
 
 // ── Main analyze ──────────────────────────────────────────────
+let cachedAlerts = null; // cache so city/duration changes don't re-fetch
+
 async function analyze() {
   const city = document.getElementById('citySelect').value;
   const btn = document.getElementById('findBtn');
@@ -190,7 +192,8 @@ async function analyze() {
   btn.disabled = true;
 
   try {
-    const allAlerts = await fetchAllAlerts();
+    if (!cachedAlerts) cachedAlerts = await fetchAllAlerts();
+    const allAlerts = cachedAlerts;
     const cityAlerts = filterByCity(allAlerts, city);
     const minuteCounts = countByMinute(cityAlerts);
 
@@ -231,7 +234,13 @@ document.querySelectorAll('.dur-btn').forEach(btn => {
     btn.classList.add('active');
     selectedMinutes = parseInt(btn.dataset.minutes, 10);
     document.getElementById('durationLabel').textContent = btn.dataset.minutes + " דק'";
+    if (cachedAlerts) analyze(); // re-run instantly if data already loaded
   });
+});
+
+// Re-run when city changes (no need to re-fetch)
+document.getElementById('citySelect').addEventListener('change', () => {
+  if (cachedAlerts) analyze();
 });
 
 document.getElementById('findBtn').addEventListener('click', analyze);
