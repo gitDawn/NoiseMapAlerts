@@ -199,8 +199,9 @@ async function analyze() {
 
   try {
     if (!cachedAlerts) cachedAlerts = await fetchAllAlerts();
-    const allAlerts = cachedAlerts;
-    const cityAlerts = filterByCity(allAlerts, city);
+    // Keep only real attack alerts (rockets + hostile aircraft)
+    const attackAlerts = cachedAlerts.filter(a => a.category === 1 || a.category === 2 || a.category === 6);
+    const cityAlerts = filterByCity(attackAlerts, city);
     const minuteCounts = countByMinute(cityAlerts);
 
     const { bestMinute } = findBestWindow(minuteCounts, selectedMinutes);
