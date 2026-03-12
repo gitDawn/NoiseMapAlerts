@@ -27,28 +27,34 @@ HEADERS = {
 }
 
 def fetch_alerts():
-    alerts = []
-    for i in range(4, -1, -1):
-        d = datetime.date.today() - datetime.timedelta(days=i)
-        ds = d.strftime('%d.%m.%Y')
-        url = (
-            'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx'
-            f'?lang=he&fromDate={ds}&toDate={ds}&mode=0'
-        )
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=15)
-            if r.ok:
-                data = r.json()
-                if isinstance(data, list):
-                    alerts.extend(data)
-                    print(f'{ds}: {len(data)} alerts')
-                else:
-                    print(f'{ds}: unexpected response', file=sys.stderr)
-            else:
-                print(f'{ds}: HTTP {r.status_code}', file=sys.stderr)
-        except Exception as e:
-            print(f'{ds}: Error — {e}', file=sys.stderr)
-    return alerts
+    # mode=1 returns the most recent ~3000 alerts across all dates.
+    # Date params are ignored by the API; we deduplicate by rid.
+    today = datetime.date.today()
+    past = (today - datetime.timedelta(days=5)).strftime('%d.%m.%Y')
+    url = (
+        'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx'
+        f'?lang=he&fromDate={past}&toDate={today.strftime("%d.%m.%Y")}&mode=1'
+    )
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=15)
+        if r.ok:
+            data = r.json()
+            if isinstance(data, list):
+                # Deduplicate by rid
+                seen = set()
+                alerts = []
+                for a in data:
+                    rid = a.get('rid')
+                    if rid not in seen:
+                        seen.add(rid)
+                        alerts.append(a)
+                dates = sorted(set(a.get('date','') for a in alerts))
+                print(f'Got {len(alerts)} unique alerts spanning: {dates[0]} – {dates[-1]}' if dates else 'No data')
+                return alerts
+        print(f'HTTP {r.status_code}', file=sys.stderr)
+    except Exception as e:
+        print(f'Error — {e}', file=sys.stderr)
+    return []
 
 def git_push():
     def run(cmd):
