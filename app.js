@@ -101,8 +101,6 @@ function getRiskStyle(risk) {
 // ── Chart ─────────────────────────────────────────────────────
 function renderChart(minuteCounts, bestMinute, durationMinutes) {
   const hourlyCounts = minutesToHourly(minuteCounts);
-  const max = Math.max(...hourlyCounts, 1);
-  const data = hourlyCounts.map(c => Math.round((c / max) * 100));
 
   // Highlight every hour that overlaps with the best window
   const bestHour = Math.floor(bestMinute / 60);
@@ -120,7 +118,7 @@ function renderChart(minuteCounts, bestMinute, durationMinutes) {
     data: {
       labels: Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')),
       datasets: [{
-        data,
+        data: hourlyCounts,
         backgroundColor: colors,
         borderRadius: 3,
         borderSkipped: false
@@ -133,14 +131,14 @@ function renderChart(minuteCounts, bestMinute, durationMinutes) {
         tooltip: {
           rtl: true,
           callbacks: {
-            label: ctx => `${ctx.raw}% עצימות`
+            label: ctx => `${ctx.raw} התרעות`
           }
         }
       },
       scales: {
         y: {
-          min: 0, max: 100,
-          ticks: { callback: v => v + '%', font: { size: 10 } },
+          min: 0,
+          ticks: { font: { size: 10 }, stepSize: 1 },
           grid: { color: '#f0f0f0' }
         },
         x: {
@@ -164,6 +162,14 @@ function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
   const avgPerDay = (total / 5).toFixed(1);
   const hourlyCounts = minutesToHourly(minuteCounts);
   const peakHour = hourlyCounts.indexOf(Math.max(...hourlyCounts));
+
+  // Update chart title with city
+  const dates = alerts.length > 0
+    ? [...new Set(alerts.map(a => a.date || ''))].filter(Boolean).sort()
+    : [];
+  const dateRange = dates.length >= 2 ? `${dates[0]} – ${dates[dates.length-1]}` : dates[0] || '';
+  document.getElementById('chartTitle').textContent =
+    `מספר התרעות לפי שעה — ${city}${dateRange ? ` (${dateRange})` : ''}`;
   const lastAlert = alerts.length > 0 ? alerts[alerts.length - 1].alertDate || '—' : '—';
   const lastAlertShort = typeof lastAlert === 'string'
     ? (lastAlert.includes('T') ? lastAlert.split('T')[1].slice(0,5) : (lastAlert.split(' ')[1] || lastAlert).slice(0,5))
