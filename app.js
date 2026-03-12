@@ -17,7 +17,7 @@ let selectedMinutes = 5;
 
 // ── Cloudflare Worker URL ─────────────────────────────────────
 // After deploying worker.js to Cloudflare Workers, paste the URL here:
-const WORKER_URL = 'https://noisemap-proxy.REPLACE_ME.workers.dev';
+const WORKER_URL = 'https://aged-cake-7e98.shahar8.workers.dev';
 
 // ── Fetch alerts from Cloudflare Worker (fresh, no CORS issues) ──
 async function fetchAllAlerts() {
