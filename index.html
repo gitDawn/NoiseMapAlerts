@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מתי הכי בטוח לעשות סקס? | Noise Map</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">&#128276;</span>
+        Noise Map &amp; Household Alerts
+      </div>
+      <div class="header-links">
+        <a href="#">Report</a>
+        <span class="sep">|</span>
+        <a href="#">הקשר הוחלף</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-title-block">
+      <h1>מתי הכי בטוח לעשות סקס היום?</h1>
+      <p class="subtitle">גלו את חלונות הזמן הדיסקרטיים ביותר</p>
+    </div>
+
+    <div class="card">
+
+      <!-- Controls -->
+      <div class="controls-row">
+        <div class="city-select-wrap">
+          <label for="citySelect">&#128205; בחרו ישוב:</label>
+          <select id="citySelect">
+            <option value="נתניה">נתניה</option>
+            <option value="פתח תקווה">פתח תקווה</option>
+            <option value="תל אביב" selected>תל אביב</option>
+          </select>
+        </div>
+        <div class="counter-line" id="counterLine">1,018 אנשים נוספים מנסים למצוא רגע אינטימי</div>
+      </div>
+
+      <!-- Big button -->
+      <button id="findBtn" class="find-btn">אפשר לעשות סקס</button>
+
+      <!-- Result row -->
+      <div class="result-row hidden" id="resultRow">
+        <div class="risk-badge" id="riskBadge">
+          <div class="risk-percent" id="riskPercent">--</div>
+          <div class="risk-label" id="riskLabel">--</div>
+        </div>
+        <div class="best-time-block">
+          <div class="best-time-title">הזמן הטוב ביותר:</div>
+          <div class="best-time-value" id="bestTime">--:--</div>
+        </div>
+      </div>
+
+      <!-- Duration selector -->
+      <div class="duration-section">
+        <div class="duration-title">משך הזמן המבוקש: <strong id="durationLabel">5 דק'</strong></div>
+        <div class="duration-buttons">
+          <button class="dur-btn active" data-minutes="5">5 דק'<br><small>מיקוד</small></button>
+          <button class="dur-btn" data-minutes="10">10 דק'<br><small>מלא</small></button>
+          <button class="dur-btn" data-minutes="15">15 דק'<br><small>ארוך</small></button>
+          <button class="dur-btn" data-minutes="20">20 דק'<br><small>אפיקי</small></button>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-section hidden" id="chartSection">
+        <div class="chart-title">עצימות התרעות לפי שעה (3 ימים אחרונים)</div>
+        <canvas id="alertChart" height="120"></canvas>
+        <div class="chart-legend">
+          <span class="legend-dot safe"></span> שעה בטוחה ביותר
+          <span class="legend-dot danger"></span> שעות עם התרעות
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-section hidden" id="statsSection">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="disclaimer">
+          הנתונים מבוססים על נתוני פיקוד העורף לפי הנתונים ההיסטוריים. אין לראות בהם מידע על החלפות לגינון בריא, פרטיות וביטחון אישי זוניים.
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>Noise Map &amp; Household Alerts</span>
+      <span class="footer-version">V1</span>
+      <div class="footer-icons">
+        <a href="#" title="Facebook">f</a>
+        <a href="#" title="Twitter">t</a>
+        <a href="#" title="Instagram">in</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
