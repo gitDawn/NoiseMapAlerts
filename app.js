@@ -34,7 +34,7 @@ function getLast3Days() {
 // ── Fetch from Pikud HaOref via CORS proxy ────────────────────
 async function fetchAlertsForDate(date) {
   const ds = formatDateIL(date);
-  const apiUrl = `https://www.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${ds}&toDate=${ds}&mode=0`;
+  const apiUrl = `https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${ds}&toDate=${ds}&mode=0`;
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
   const resp = await fetch(proxyUrl);
   if (!resp.ok) throw new Error('Network error');
