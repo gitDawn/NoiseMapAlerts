@@ -14,39 +14,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Playwright
+        run: pip install playwright && playwright install chromium --with-deps
+
       - name: Fetch last 3 days of alerts from Pikud HaOref
         run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-          COOKIES=$(mktemp)
+          python3 - <<'EOF'
+          from playwright.sync_api import sync_playwright
+          import json, datetime
 
-          # Seed session cookies from main site
-          curl -s -c "$COOKIES" -b "$COOKIES" \
-            -H "User-Agent: $UA" \
-            "https://www.oref.org.il/" -o /dev/null
+          alerts = []
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(
+                  user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+              )
+              page = context.new_page()
 
-          ALL_ALERTS="["
-          FIRST=1
-          for i in 2 1 0; do
-            DS=$(date -d "-${i} days" '+%d.%m.%Y')
-            URL="https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${DS}&toDate=${DS}&mode=0"
-            RESULT=$(curl -s -c "$COOKIES" -b "$COOKIES" \
-              -H "User-Agent: $UA" \
-              -H "Referer: https://www.oref.org.il/" \
-              -H "X-Requested-With: XMLHttpRequest" \
-              -H "Accept: application/json, text/javascript, */*; q=0.01" \
-              "$URL")
-            echo "$DS: $(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d),'alerts')" 2>/dev/null || echo 'error')"
-            # Append items (strip outer brackets and join)
-            ITEMS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(','.join(json.dumps(x,ensure_ascii=False) for x in d))" 2>/dev/null || echo "")
-            if [ -n "$ITEMS" ]; then
-              [ $FIRST -eq 0 ] && ALL_ALERTS="${ALL_ALERTS},"
-              ALL_ALERTS="${ALL_ALERTS}${ITEMS}"
-              FIRST=0
-            fi
-          done
-          ALL_ALERTS="${ALL_ALERTS}]"
-          echo "$ALL_ALERTS" > alerts.json
-          echo "Total: $(echo "$ALL_ALERTS" | python3 -c "import sys,json; print(len(json.load(sys.stdin)),'alerts')")"
+              # Visit main page so Cloudflare sets session cookies
+              page.goto('https://www.oref.org.il/', wait_until='domcontentloaded', timeout=30000)
+
+              for i in range(2, -1, -1):
+                  d = datetime.date.today() - datetime.timedelta(days=i)
+                  ds = d.strftime('%d.%m.%Y')
+                  url = (
+                      'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx'
+                      f'?lang=he&fromDate={ds}&toDate={ds}&mode=0'
+                  )
+                  try:
+                      resp = page.request.get(url, headers={
+                          'Referer': 'https://www.oref.org.il/',
+                          'X-Requested-With': 'XMLHttpRequest',
+                          'Accept': 'application/json, text/javascript, */*; q=0.01',
+                      })
+                      data = resp.json()
+                      if isinstance(data, list):
+                          alerts.extend(data)
+                          print(f'{ds}: {len(data)} alerts')
+                  except Exception as e:
+                      print(f'Error {ds}: {e}')
+
+              browser.close()
+
+          with open('alerts.json', 'w', encoding='utf-8') as f:
+              json.dump(alerts, f, ensure_ascii=False, separators=(',', ':'))
+          print(f'Total: {len(alerts)} alerts saved.')
+          EOF
 
       - name: Commit updated alerts.json
         run: |
