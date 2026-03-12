@@ -62,56 +62,67 @@ function filterByCity(alerts, city) {
   );
 }
 
-// ── Count alerts per hour (0–23) ──────────────────────────────
-function countByHour(alerts) {
-  const counts = new Array(24).fill(0);
+// ── Count alerts per minute (0–1439) ─────────────────────────
+function countByMinute(alerts) {
+  const counts = new Array(1440).fill(0);
   alerts.forEach(a => {
     if (!a.alertDate) return;
-    // alertDate format: "DD.MM.YYYY HH:MM:SS" or ISO
     const raw = a.alertDate;
-    let hour;
+    let h, m;
     if (raw.includes('.')) {
       // "01.01.2024 13:45:00"
       const timePart = raw.split(' ')[1];
-      hour = timePart ? parseInt(timePart.split(':')[0], 10) : 0;
+      if (!timePart) return;
+      const parts = timePart.split(':');
+      h = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10);
     } else {
-      hour = new Date(raw).getHours();
+      // ISO: "2026-03-13T13:45:00"
+      const d = new Date(raw);
+      h = d.getHours();
+      m = d.getMinutes();
     }
-    if (hour >= 0 && hour < 24) counts[hour]++;
+    const idx = h * 60 + m;
+    if (idx >= 0 && idx < 1440) counts[idx]++;
   });
   return counts;
 }
 
-// ── Find best window ──────────────────────────────────────────
-function findBestWindow(counts, minutes) {
-  // Each "slot" = 1 hour. Window = ceil(minutes/60) hours.
-  const windowSize = Math.max(1, Math.ceil(minutes / 60));
+// ── Aggregate minute counts into hourly for the chart ─────────
+function minutesToHourly(minuteCounts) {
+  return Array.from({ length: 24 }, (_, h) =>
+    minuteCounts.slice(h * 60, h * 60 + 60).reduce((s, v) => s + v, 0)
+  );
+}
 
-  let bestHour = 0;
+// ── Find best window (1-minute resolution) ────────────────────
+function findBestWindow(minuteCounts, minutes) {
+  const TOTAL = 1440;
+  let bestMinute = 0;
   let bestSum = Infinity;
 
-  for (let h = 0; h < 24; h++) {
+  for (let i = 0; i < TOTAL; i++) {
     let sum = 0;
-    for (let w = 0; w < windowSize; w++) {
-      sum += counts[(h + w) % 24];
+    for (let w = 0; w < minutes; w++) {
+      sum += minuteCounts[(i + w) % TOTAL];
     }
     if (sum < bestSum) {
       bestSum = sum;
-      bestHour = h;
+      bestMinute = i;
     }
   }
-  return { bestHour, bestSum, windowSize };
+  return { bestMinute, bestSum };
 }
 
 // ── Risk calculation ──────────────────────────────────────────
-function calcRisk(counts, bestHour, windowSize) {
-  // Max possible = 3 days × ~5 alerts/hour = 15 per hour, times window
-  const maxExpected = 3 * 5 * windowSize;
+function calcRisk(minuteCounts, bestMinute, minutes) {
+  // Max expected: 3 days × 5 alerts/hour × (minutes/60)
+  const maxExpected = 3 * 5 * (minutes / 60);
   let sum = 0;
-  for (let w = 0; w < windowSize; w++) {
-    sum += counts[(bestHour + w) % 24];
+  for (let w = 0; w < minutes; w++) {
+    sum += minuteCounts[(bestMinute + w) % 1440];
   }
-  return Math.min(Math.round((sum / maxExpected) * 100), 100);
+  return Math.min(Math.round((sum / Math.max(maxExpected, 1)) * 100), 100);
 }
 
 function getRiskStyle(risk) {
@@ -119,15 +130,18 @@ function getRiskStyle(risk) {
 }
 
 // ── Chart ─────────────────────────────────────────────────────
-function renderChart(counts, bestHour, windowSize) {
-  const max = Math.max(...counts, 1);
-  const data = counts.map(c => Math.round((c / max) * 100));
+function renderChart(minuteCounts, bestMinute, durationMinutes) {
+  const hourlyCounts = minutesToHourly(minuteCounts);
+  const max = Math.max(...hourlyCounts, 1);
+  const data = hourlyCounts.map(c => Math.round((c / max) * 100));
 
-  const colors = counts.map((_, i) => {
-    for (let w = 0; w < windowSize; w++) {
-      if ((bestHour + w) % 24 === i) return '#3aaa35';
-    }
-    return '#1565c0';
+  // Highlight every hour that overlaps with the best window
+  const bestHour = Math.floor(bestMinute / 60);
+  const endMinute = (bestMinute + durationMinutes - 1) % 1440;
+  const endHour = Math.floor(endMinute / 60);
+  const colors = hourlyCounts.map((_, i) => {
+    if (bestHour <= endHour) return (i >= bestHour && i <= endHour) ? '#3aaa35' : '#1565c0';
+    return (i >= bestHour || i <= endHour) ? '#3aaa35' : '#1565c0'; // wraps midnight
   });
 
   if (chart) chart.destroy();
@@ -169,22 +183,31 @@ function renderChart(counts, bestHour, windowSize) {
   });
 }
 
+// ── Format minute index → "HH:MM" ─────────────────────────────
+function fmtMinute(m) {
+  const total = ((m % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+}
+
 // ── Stats panel ───────────────────────────────────────────────
-function renderStats(alerts, counts, bestHour, windowSize, city) {
+function renderStats(alerts, minuteCounts, bestMinute, durationMinutes, city) {
   const total = alerts.length;
   const avgPerDay = (total / 3).toFixed(1);
-  const maxHour = counts.indexOf(Math.max(...counts));
+  const hourlyCounts = minutesToHourly(minuteCounts);
+  const peakHour = hourlyCounts.indexOf(Math.max(...hourlyCounts));
   const lastAlert = alerts.length > 0 ? alerts[alerts.length - 1].alertDate || '—' : '—';
-  const lastAlertShort = typeof lastAlert === 'string' ? lastAlert.split(' ')[1] || lastAlert : '—';
+  const lastAlertShort = typeof lastAlert === 'string'
+    ? (lastAlert.includes('T') ? lastAlert.split('T')[1].slice(0,5) : (lastAlert.split(' ')[1] || lastAlert).slice(0,5))
+    : '—';
 
-  const endHour = (bestHour + windowSize - 1) % 24;
+  const endMinute = (bestMinute + durationMinutes - 1) % 1440;
 
   document.getElementById('statsGrid').innerHTML = `
     <div class="stat-row"><span class="stat-label">ישוב</span><span class="stat-value">${city}</span></div>
-    <div class="stat-row"><span class="stat-label">חלון בטוח</span><span class="stat-value">${String(bestHour).padStart(2,'0')}:00 – ${String(endHour).padStart(2,'0')}:59</span></div>
+    <div class="stat-row"><span class="stat-label">חלון בטוח</span><span class="stat-value">${fmtMinute(bestMinute)} – ${fmtMinute(endMinute)}</span></div>
     <div class="stat-row"><span class="stat-label">מספר התרעות (3 ימים)</span><span class="stat-value">${total}</span></div>
     <div class="stat-row"><span class="stat-label">ממוצע ליום</span><span class="stat-value">${avgPerDay}</span></div>
-    <div class="stat-row"><span class="stat-label">שעת השיא</span><span class="stat-value">${String(maxHour).padStart(2,'0')}:00</span></div>
+    <div class="stat-row"><span class="stat-label">שעת השיא</span><span class="stat-value">${String(peakHour).padStart(2,'0')}:00</span></div>
     <div class="stat-row"><span class="stat-label">זמן התרעה אחרונה</span><span class="stat-value">${lastAlertShort}</span></div>
   `;
 }
@@ -200,15 +223,14 @@ async function analyze() {
   try {
     const allAlerts = await fetchAllAlerts();
     const cityAlerts = filterByCity(allAlerts, city);
-    const counts = countByHour(cityAlerts);
+    const minuteCounts = countByMinute(cityAlerts);
 
-    const { bestHour, windowSize } = findBestWindow(counts, selectedMinutes);
-    const risk = calcRisk(counts, bestHour, windowSize);
+    const { bestMinute } = findBestWindow(minuteCounts, selectedMinutes);
+    const risk = calcRisk(minuteCounts, bestMinute, selectedMinutes);
     const { label, color } = getRiskStyle(risk);
 
-    // Update best time
-    document.getElementById('bestTime').textContent =
-      `${String(bestHour).padStart(2, '0')}:00`;
+    // Update best time with minute precision
+    document.getElementById('bestTime').textContent = fmtMinute(bestMinute);
 
     // Update risk badge
     const badge = document.getElementById('riskBadge');
@@ -221,8 +243,8 @@ async function analyze() {
     document.getElementById('chartSection').classList.remove('hidden');
     document.getElementById('statsSection').classList.remove('hidden');
 
-    renderChart(counts, bestHour, windowSize);
-    renderStats(cityAlerts, counts, bestHour, windowSize, city);
+    renderChart(minuteCounts, bestMinute, selectedMinutes);
+    renderStats(cityAlerts, minuteCounts, bestMinute, selectedMinutes, city);
 
   } catch (err) {
     console.error(err);
