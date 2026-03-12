@@ -31,7 +31,7 @@ jobs:
               )
               page = context.new_page()
 
-              # Visit main page so Cloudflare sets session cookies
+              # Visit main page so Cloudflare sets cookies/fingerprint
               page.goto('https://www.oref.org.il/', wait_until='domcontentloaded', timeout=30000)
 
               for i in range(2, -1, -1):
@@ -42,15 +42,15 @@ jobs:
                       f'?lang=he&fromDate={ds}&toDate={ds}&mode=0'
                   )
                   try:
-                      resp = page.request.get(url, headers={
-                          'Referer': 'https://www.oref.org.il/',
-                          'X-Requested-With': 'XMLHttpRequest',
-                          'Accept': 'application/json, text/javascript, */*; q=0.01',
-                      })
-                      data = resp.json()
+                      # Navigate directly with page so full browser context is used
+                      resp = page.goto(url, wait_until='domcontentloaded', timeout=20000)
+                      body = page.inner_text('body') if page.query_selector('body') else page.content()
+                      data = json.loads(body)
                       if isinstance(data, list):
                           alerts.extend(data)
                           print(f'{ds}: {len(data)} alerts')
+                      else:
+                          print(f'{ds}: unexpected response type')
                   except Exception as e:
                       print(f'Error {ds}: {e}')
 
