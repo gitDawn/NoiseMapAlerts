@@ -17,7 +17,17 @@ jobs:
       - name: Fetch last 3 days of alerts from Pikud HaOref
         run: |
           python3 - <<'EOF'
-          import urllib.request, json, datetime, sys
+          import urllib.request, http.cookiejar, json, datetime, sys
+
+          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+          # Build an opener with cookie support
+          jar = http.cookiejar.CookieJar()
+          opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+          # Visit main page first to get session cookies
+          seed = urllib.request.Request('https://www.oref.org.il/', headers={'User-Agent': UA})
+          opener.open(seed, timeout=15)
 
           alerts = []
           for i in range(2, -1, -1):
@@ -30,11 +40,11 @@ jobs:
               try:
                   req = urllib.request.Request(url, headers={
                       'Referer': 'https://www.oref.org.il/',
-                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                      'User-Agent': UA,
                       'X-Requested-With': 'XMLHttpRequest',
                       'Accept': 'application/json, text/javascript, */*; q=0.01',
                   })
-                  with urllib.request.urlopen(req, timeout=15) as r:
+                  with opener.open(req, timeout=15) as r:
                       data = json.loads(r.read().decode('utf-8'))
                       if isinstance(data, list):
                           alerts.extend(data)
